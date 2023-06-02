@@ -11,7 +11,7 @@ def upload(filename,extension):
     putdata = request.get_data()
 
     # Specify the file path for writing
-    file_path = "/tmp/" + recording
+    file_path = "/data/" + recording
 
     # Write the data to the file
     with open(file_path, "wb") as fp:
