@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Processing Dashboard</title>
+    <!-- Add Bootstrap CSS link -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Add custom CSS for additional styling -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        .file-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .file-item {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .file-item a {
+            text-decoration: none;
+            color: #007bff;
+        }
+        audio {
+            padding-top: 1em;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-4">Processed Files</h1>
+        <ul class="file-list">
+            {% for filename, data in file_status.items() %}
+                <li class="file-item row">
+                    <div class="col-md-4">
+                        <label><strong>{{ filename }}</strong></label>
+                        <label>{{ data.timestamp }}</label>
+                    </div>
+                    
+                    {% if data.status == "Analysis completed" %}
+                    <div class="col-md-6">
+                        <audio controls>
+                            <source src="{{ url_for('play_audio', filename=filename) }}"  type="audio/wav">
+                            Your browser does not support the audio element.
+                        </audio>
+                        
+                    </div>
+                    <div class="col-md-2">
+                        <a href="{{ url_for('view_markdown', filename=filename + '.txt') }}" class="btn btn-outline-primary btn-sm btn-block float-right">💬 View Transcript</a>
+                        <a href="{{ url_for('view_markdown', filename=filename + '.md') }}" class="btn btn-outline-primary btn-sm btn-block float-right">🗜 View Analysis</a>
+                    </div>
+                    {% else %}
+                    🏃
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</body>
+</html>

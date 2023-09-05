@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Markdown Viewer</title>
+    <!-- Include Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- Add custom styles -->
+    <style>
+        /* Add custom styles here */
+        body {
+            padding: 20px;
+        }
+        .markdown-content {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-4">Analysis Results</h1>
+        <div class="markdown-content mt-3">
+            {{ html_content|safe }}
+        </div>
+    </div>
+</body>
+</html>

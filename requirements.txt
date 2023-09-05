@@ -1,1 +1,6 @@
 flask
+git+https://github.com/m-bain/whisperx.git
+ffmpeg-python
+openai
+tiktoken
+markdown
