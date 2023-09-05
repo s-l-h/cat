@@ -12,7 +12,8 @@ WORKDIR /app
 # Kopieren Sie die Anwendung in den Container
 COPY . .
 
-RUN apt-get update 
+RUN apt-get update && apt-get install -y \
+    ffmpeg
 # Installieren Sie die erforderlichen Abhängigkeiten
 RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
