@@ -36,34 +36,145 @@
     </style>
 </head>
 <body>
+    <nav class="navbar navbar-dark bg-dark">
+        <a class="navbar-brand" href="#">
+            <h4>🙀 - <b>C</b><small>onversation</small><b>A</b><small>nalysis</small><b>T</b><small>oolkit</small></h4>
+        </a>
+        <span class="navbar-text">
+            <label>👨‍💻 {{ threads.running }}/{{ threads.max }}</label>
+        </span>
+      </nav>
+      
     <div class="container">
         <h1 class="mt-4">Processed Files</h1>
         <ul class="file-list">
             {% for filename, data in file_status.items() %}
-                <li class="file-item row">
-                    <div class="col-md-4">
-                        <label><strong>{{ filename }}</strong></label>
-                        <label>{{ data.timestamp }}</label>
-                    </div>
-                    
-                    {% if data.status == "Analysis completed" %}
-                    <div class="col-md-6">
-                        <audio controls>
+                <li class="file-item card">
+                    <div class="">
+                        <div class="card-body">
+                          <h5 class="card-title">{{ filename }}</h5>
+                          <h6 class="card-subtitle mb-2 text-muted">{{ data.timestamp }}</h6>
+                          <p class="card-text"><audio controls>
                             <source src="{{ url_for('play_audio', filename=filename) }}"  type="audio/wav">
                             Your browser does not support the audio element.
-                        </audio>
-                        
+                            </audio>
+                          </p>
+                            <button onclick="deleteFile('{{ filename }}',this)" class="btn btn-danger btn-sm  float-right">Delete</button>
+                            {% if data.status == "Analysis completed" %}
+                            <a href="{{ url_for('view_markdown', filename=filename + '.txt') }}" class="btn btn-outline-primary btn-sm">💬 View Transcript</a>
+                            <a href="{{ url_for('view_markdown', filename=filename + '.md') }}" class="btn btn-outline-primary btn-sm ">🗜 View Analysis</a>
+                            {% else %}
+                            <button onclick="" class="btn btn-alert btn-sm float-right">Analyze</button>
+                            {% endif %}
+                        </div>
                     </div>
-                    <div class="col-md-2">
-                        <a href="{{ url_for('view_markdown', filename=filename + '.txt') }}" class="btn btn-outline-primary btn-sm btn-block float-right">💬 View Transcript</a>
-                        <a href="{{ url_for('view_markdown', filename=filename + '.md') }}" class="btn btn-outline-primary btn-sm btn-block float-right">🗜 View Analysis</a>
-                    </div>
-                    {% else %}
-                    🏃
-                    {% endif %}
                 </li>
             {% endfor %}
         </ul>
     </div>
+    <!-- Drag-and-drop area -->
+    <div class="container mt-4">
+        <div class="drag-drop-area" id="drag-drop-area">
+            <p>Drag and drop audio recordings here</p>
+            <input type="file" id="fileInput" accept=".wav, .mp3" style="display: none;">
+        </div>
+    </div>
 </body>
+<!-- Add this script tag to your HTML template -->
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const dragDropArea = document.getElementById("drag-drop-area");
+        const fileInput = document.getElementById("fileInput");
+
+        dragDropArea.addEventListener("dragover", function(e) {
+            e.preventDefault();
+            dragDropArea.classList.add("active");
+        });
+
+        dragDropArea.addEventListener("dragleave", function() {
+            dragDropArea.classList.remove("active");
+        });
+
+        dragDropArea.addEventListener("drop", function(e) {
+            e.preventDefault();
+            dragDropArea.classList.remove("active");
+
+            const droppedFiles = e.dataTransfer.files;
+            if (droppedFiles.length > 0) {
+                // Handle the dropped files, e.g., upload or process them
+                // You can use the 'droppedFiles' array to access the dropped files.
+                // For example, you can iterate over the files and upload them to your server.
+                // Here, we're just displaying a message for demonstration purposes.
+                alert(`Dropped ${droppedFiles.length} file(s). You can process them here.`);
+            }
+        });
+
+        // Trigger file input when clicking on the drag-and-drop area
+        dragDropArea.addEventListener("click", function() {
+            fileInput.click();
+        });
+
+        // Handle file selection from the file input
+        fileInput.addEventListener("change", function(e) {
+            const selectedFile = e.target.files[0];
+            if (selectedFile) {
+                // Handle the selected file, e.g., upload or process it
+                // You can use 'selectedFile' to access the selected file.
+                // Here, we're just displaying a message for demonstration purposes.
+                uploadFile(selectedFile);
+                alert(`Selected file: ${selectedFile.name}. You can process it here.`);
+            }
+        });
+    });
+    function uploadFile(file) {
+        const formData = new FormData();
+        //for (const file of files) {
+        formData.append("file", file);
+        //}
+
+        fetch(`/call_recording_${file.name}`, {
+            method: "POST",
+            body: formData,
+        })
+        .then(response => {
+            if (response.status === 200) {
+                // Successful upload, update the UI or show a success message
+                // You can refresh the page or update the UI as needed.
+                alert("File(s) uploaded successfully.");
+            } else {
+                alert("Error uploading file(s).");
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+        });
+    }
+    function deleteFile(filename,element) {
+
+        if(confirm('Are you sure you want to delete this file?')==false)
+            return;
+
+        fetch(`/delete/${filename}`, {
+            method: 'DELETE',
+        })
+        .then(response => {
+            if (response.status === 200) {
+                // Successful deletion, update the UI or show a success message
+                const listItem = element.closest('li');
+                if (listItem) {
+                    listItem.remove();
+                }
+                // You can refresh the page or update the UI as needed.
+                // For example, remove the deleted item from the list.
+            } else if (response.status === 404) {
+                alert('File not found.');
+            } else {
+                alert('Error deleting file.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    }
+</script>
 </html>

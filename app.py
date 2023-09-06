@@ -1,7 +1,7 @@
 # coding=utf-8
 import argparse
 from datetime import datetime
-from flask import Flask, request, render_template, send_from_directory
+from flask import Flask, request, render_template, send_from_directory, jsonify
 import asyncio
 import markdown
 import openai
@@ -10,19 +10,26 @@ import whisperx
 import concurrent.futures
 import os 
 
-DEVICE = os.environ.get("DEVICE", "cpu") # TODO: set to "cpu" if no GPU is available
-BATCH_SIZE = int(os.environ.get("BATCH_SIZE", 16)) # reduce if low on GPU mem
-COMPUTE_TYPE = os.environ.get("COMPUTE_TYPE", "int8") #"float16" # change to "int8" if low on GPU mem (may reduce accuracy)
-
-HF_TOKEN= os.environ.get("HF_TOKEN", "")
+## llm
 openai.api_key= os.environ.get("OPENAI_API_KEY", "")
 GPT_MODEL = os.environ.get("GPT_MODEL", "gpt-3.5-turbo-16k") #gpt-4
 
+## audio
+DEVICE = os.environ.get("DEVICE", "cpu") # TODO: set to "cpu" if no GPU is available
+BATCH_SIZE = int(os.environ.get("BATCH_SIZE", 16)) # reduce if low on GPU mem
+COMPUTE_TYPE = os.environ.get("COMPUTE_TYPE", "int8") #"float16" # change to "int8" if low on GPU mem (may reduce accuracy)
+HF_TOKEN= os.environ.get("HF_TOKEN", "") # huggingface api token
 WHISPERX_MODEL = os.environ.get("WHISPERX_MODEL", "large-v2")
 LANGUAGE_CODE = os.environ.get("LANGUAGE_CODE", "de")
 
+## threading
+NUM_THREADS = int(os.environ.get("NUM_THREADS", "4"))  # Default to 4 threads
+
 # Define a thread pool for inference tasks
 executor = concurrent.futures.ThreadPoolExecutor()
+
+# Global variable to keep track of running analysis threads
+running_threads = 0
 
 app = Flask(__name__)
 
@@ -123,13 +130,15 @@ def transscribe_aligned(audio,result):
 
 def whisperx_pipeline(filename):
 
+    global running_threads
+
     try:
         print("1. loading audio")
         audio = whisperx.load_audio(filename)
 
         # 1. Transcribe with original whisper (batched)
-        print("2. loading moodel")
-        model = whisperx.load_model(WHISPERX_MODEL, DEVICE, compute_type=COMPUTE_TYPE)
+        print("2. loading model")
+        model = whisperx.load_model(WHISPERX_MODEL, DEVICE, compute_type=COMPUTE_TYPE,language=LANGUAGE_CODE)
 
         print("2. transcribing")
         result = model.transcribe(audio, batch_size=BATCH_SIZE)
@@ -196,27 +205,59 @@ def whisperx_pipeline(filename):
         
     except Exception as e:
         print(e)
+    finally:
+        running_threads -= 1
 
-@app.route('/call_recording_<filename>.<extension>', methods=['PUT','POST'])
-def upload(filename,extension):
-    # Get the recording parameter from the request
-    recording = f"{filename}.{extension}"
+@app.route('/call_recording_<filename>', methods=['PUT','POST'])
+def upload(filename):
 
-    # Read the PUT data from request
-    putdata = request.get_data()
+    global running_threads
 
-    # Specify the file path for writing
-    file_path = "/data/" + recording
+    # handle formData upload
+    uploaded_file = request.files['file'] if 'file' in request.files else None
 
-    # Write the data to the file
-    with open(file_path, "wb") as fp:
-        fp.write(putdata)
+    if uploaded_file:
+        # Specify the file path for writing
+        file_path = "/data/" + uploaded_file.filename #secure_filename(uploaded_file.filename)
+
+        # Save the file
+        uploaded_file.save(file_path)
+    else:
+        # Get the recording parameter from the request
+        recording = f"{filename}"
+
+        # Read the PUT data from request
+        putdata = request.get_data()
+
+        # Specify the file path for writing
+        file_path = "/data/" + recording
+
+        # Write the data to the file
+        with open(file_path, "wb") as fp:
+            fp.write(putdata)
 
     # Offload the analysis to a separate thread in a thread pool
     future = executor.submit(whisperx_pipeline, file_path)
 
+    # Increment the running thread count
+    running_threads += 1
+
+
     # Return a response
     return 'File saved at ' + file_path
+
+@app.route('/delete/<filename>', methods=['DELETE'])
+def delete(filename):
+    file_path = f"/data/{filename}"
+
+    # Check if the file exists
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        response = {"message": f'File {filename} has been deleted.'}
+        return jsonify(response), 200
+    else:
+        response = {"message": f'File {filename} does not exist.'}
+        return jsonify(response), 404
 
 @app.route('/view/<filename>', methods=['GET'])
 def view_markdown(filename):
@@ -277,7 +318,7 @@ def index():
     )
 
     # Create an HTML template to display the list of processed files and their status
-    return render_template('index.html', file_status=file_status)
+    return render_template('index.html', file_status=file_status, threads = { "max": NUM_THREADS, "running": running_threads })
 
 
 if __name__ == '__main__':
