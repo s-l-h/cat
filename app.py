@@ -9,6 +9,8 @@ import tiktoken
 import whisperx
 import concurrent.futures
 import os 
+from dotenv import load_dotenv
+load_dotenv()  # take environment variables from .env.
 
 ## llm
 openai.api_key= os.environ.get("OPENAI_API_KEY", "")
@@ -30,6 +32,9 @@ executor = concurrent.futures.ThreadPoolExecutor()
 
 # Global variable to keep track of running analysis threads
 running_threads = 0
+
+# Queue for incoming uploads
+upload_queue = []
 
 app = Flask(__name__)
 
@@ -77,6 +82,14 @@ def format_meeting_summary(meeting_summary):
     return '\n'.join(formatted_output)
 
 ########################################################
+
+def process_queue():
+    global running_threads
+    global upload_queue
+    # Check if there are items in the queue and available threads to process them
+    while upload_queue and running_threads < NUM_THREADS:
+        filename = upload_queue.pop(0)
+        executor.submit(whisperx_pipeline, filename)
 
 def clear_mem(model):
     import gc
@@ -131,6 +144,7 @@ def transscribe_aligned(audio,result):
 def whisperx_pipeline(filename):
 
     global running_threads
+    global upload_queue
 
     try:
         print("1. loading audio")
@@ -212,6 +226,7 @@ def whisperx_pipeline(filename):
 def upload(filename):
 
     global running_threads
+    global upload_queue
 
     # handle formData upload
     uploaded_file = request.files['file'] if 'file' in request.files else None
@@ -236,15 +251,19 @@ def upload(filename):
         with open(file_path, "wb") as fp:
             fp.write(putdata)
 
+    if running_threads >= NUM_THREADS:
+        # If the number of running threads exceeds the threshold, enqueue the upload
+        upload_queue.append((file_path))
+        return jsonify({"message": "Upload queued for processing."}), 202
+
     # Offload the analysis to a separate thread in a thread pool
     future = executor.submit(whisperx_pipeline, file_path)
 
     # Increment the running thread count
     running_threads += 1
 
-
     # Return a response
-    return 'File saved at ' + file_path
+    return jsonify({"message": f"Upload successful"}), 200
 
 @app.route('/delete/<filename>', methods=['DELETE'])
 def delete(filename):
