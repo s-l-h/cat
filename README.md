@@ -1,6 +1,6 @@
 # 🐈 CAT 
 
-CAT (**C**onversation **A**nalysis **T**oolkit) is a versatile tool for analyzing and summarizing audio conversations. It utilizes a combination of cutting-edge AI models, including OpenAI's GPT model and Hugging Face's Whisper ASR (Automatic Speech Recognition) model, to transcribe, diarize, and summarize spoken content. With CAT, you can quickly extract key information, action items, and even analyze the mood of the conversation.
+CAT (**C**onversation **A**nalytics **T**oolkit) is a versatile tool for analyzing and summarizing audio conversations. It utilizes [`Whisper-X`](https://github.com/m-bain/whisperX), to transcribe and diarize spoken content. After that, it performs analytic tasks on this transcript, using a large language model (currently GPT-only). With CAT, you can quickly extract key information, action items, and even analyze the mood of the conversation.
 
 ## Features
 
@@ -18,7 +18,16 @@ CAT (**C**onversation **A**nalysis **T**oolkit) is a versatile tool for analyzin
 
 ## Getting Started
 
-### Running CAT Locally
+### ❗ Prerequisites:
+
+- [OpenAI API Key](https://beta.openai.com/account/api-keys)
+- [HuggingFace API Token](https://huggingface.co/settings/token)
+- Accepted EULA for:
+  - [pyannote.segmentation](https://huggingface.co/pyannote/segmentation)
+  - [pyannote.VAD](https://huggingface.co/pyannote/voice-activity-detection)
+  - [pyannote.diarize](https://huggingface.co/pyannote/speaker-diarization)
+
+### Running Locally
 
 To run CAT locally, follow these steps:
 
@@ -59,9 +68,9 @@ To run CAT locally, follow these steps:
 
 5. Access the web interface at `http://localhost:8080` in your web browser.
 
-### 🐳 Running 🐈 in a Docker Container
+### 🐳 Running in a Docker Container
 
-🐈 also provides Docker containers for both CPU and GPU environments. Here's how to run `CAT` within a container:
+This repo also provides Docker containers for both CPU and GPU environments. Here's how to run 🐈 within a container:
 
 #### ♿ CPU-Only Container
 
@@ -76,38 +85,52 @@ To run CAT in a CPU-only Docker container, use the following steps:
 2. Run the Docker container:
 
    ```shell
-   docker run -d -p 8080:8080 -v /path/to/your/audio/files:/data cat-cpu
+   docker run -d --env-file=.env -p 8080:8080 -v /path/to/your/audio/files:/data cat-cpu
    ```
 
 #### 💉 GPU-Accelerated Container
 
 To run CAT in a GPU-accelerated Docker container, use the following steps:
 
-1. Build the Docker image:
+1. Make sure, [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) is installed on the host.
+   
+
+2. Build the Docker image:
 
    ```shell
    docker build -t cat-gpu -f Dockerfile.gpu .
    ```
 
-2. Run the Docker container with GPU support:
+3. Run the Docker container with GPU support:
 
    ```shell
-   docker run --gpus all -d -p 8080:8080 -v /path/to/your/audio/files:/data cat-gpu
+   docker run --gpus all -d --env-file=.env -p 8080:8080 -v /path/to/your/audio/files:/data cat-gpu
    ```
 
 Replace `/path/to/your/audio/files` with the directory where your audio files are located.
 
+
+
 ## Usage
 
-1. **Web Interface**: You can use the web interface to manually upload and analyze audio recordings, as described in the "Usage" section of the README.
+1. **Web Interface**: You can use the web interface to manually upload and analyze audio recordings. This is the easiest way to get started with 🐈.
 
-2. **REST API**: To automate the analysis of audio recordings, use the REST API endpoint as mentioned in the README. This is particularly useful when integrating CAT with VoIP systems for automatic call analytics.
+2. **REST API**: CAT offers a REST API endpoint that allows you to programmatically upload audio files for automatic analysis. To use this feature, you can send a `POST` or `PUT` request to the `/` endpoint. The uploaded audio will be processed automatically, and the analysis results will be made available via the web interface. This is particularly useful when integrating CAT with VoIP systems for automatic call analytics
+<br/>   
 
-3. **Monitor Progress**: CAT will process the uploaded audio and display its progress on the web interface. You can check the status and see how many threads are running.
+   Here's an example of how to use the REST API endpoint:
 
-4. **View Results**: Once processing is complete, you can view the transcribed text, diarized conversation, and extracted information. CAT also provides a summary of the conversation's key points and mood analysis.
+    ```shell
+    # Replace <filename> with your desired filename
+    curl -X POST -F "file=@/path/to/your/audio/file.wav" http://localhost:8080/<filename>
+    ```
+ .
 
-5. **Download**: You can download the transcribed text and summary for your records.
+1. **Monitor Progress**: CAT will process the uploaded audio in an async manner and display its progress on the web interface. You can check the status and see how many analytic threads are running.
+
+2. **View Results**: Once processing is complete, you can view the transcribed text, diarized conversation, and extracted information. CAT also provides a summary of the conversation's key points and mood analysis.
+
+3. **Download**: You can download the transcribed text and summary for your records.
 
 ## Customize Analysis
 
@@ -117,9 +140,9 @@ You can customize the analysis and output by modifying the relevant functions in
 
 CAT relies on the following technologies and libraries:
 
-- [OpenAI GPT](https://beta.openai.com/): For language generation and summarization.
+- [OpenAI GPT](https://beta.openai.com/): For text generation and summarization.
 
-- [Hugging Face Whisper ASR](https://huggingface.co/models?pipeline_tag=automatic-speech-recognition): For audio transcription and diarization.
+- [Whisper-X](https://github.com/m-bain/whisperX): For audio transcription and diarization.
 
 - Flask: For the web application framework.
 
@@ -127,8 +150,8 @@ CAT relies on the following technologies and libraries:
 
 ## Contributing
 
-Feel free to contribute to CAT by creating issues or submitting pull requests. Your contributions are welcome and appreciated.
+Feel free to contribute to 🐈 by creating issues or submitting pull requests. Your contributions are welcome and appreciated.
 
 ## License
 
-CAT is open-source software licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+🐈 is open-source software licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
